@@ -30,3 +30,16 @@
 *.exe
 *.out
 *.app
+
+aclocal.m4
+ltmain.sh
+autom4te.cache/
+compile
+config.guess
+config.sub
+install-sh
+missing
+depcomp
+Makefile.in
+configure
+build/
