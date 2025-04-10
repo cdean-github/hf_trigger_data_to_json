@@ -123,10 +123,12 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
     data[metadataName][hitsName][triggerTrackName]["type"] = "3D";
     data[metadataName][hitsName][triggerTrackName]["options"]["size"] = 2;
     data[metadataName][hitsName][triggerTrackName]["options"]["color"] = triggerColor;
+    //data[metadataName][trackName][triggerTrackName]["options"]["color"] = triggerColor;
     data[metadataName][hitsName][allTrackName]["type"] = "3D";
     data[metadataName][hitsName][allTrackName]["options"]["size"] = 2;
-    data[metadataName][hitsName][allTrackName]["options"]["color"] = allColor;
     data[metadataName][hitsName][allTrackName]["options"]["transparent"] = 1;
+    data[metadataName][hitsName][allTrackName]["options"]["color"] = allColor;
+    //data[metadataName][trackName][allTrackName]["options"]["color"] = allColor;
 
     data[trackName]["B"] = 0.000014;
 
@@ -297,7 +299,7 @@ void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vecto
 
     tracksJson["pxyz"] = trackMomentum;
     tracksJson["xyz"] = trackPosition;
-    tracksJson["color"] = jsonEntryName == triggerTrackName ? triggerColor : allColor;
+    tracksJson["trk_color"] = jsonEntryName == triggerTrackName ? triggerColor : allColor;
     tracksJson["nh"] = 60;
     tracksJson["l"] = length;
     tracksJson["q"] = jsonEntryName == triggerTrackName ? particles[trackCounter]->Q() : track->get_charge();
@@ -315,7 +317,7 @@ void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vecto
 
     tracksJson["pxyz"] = {mother->GetPx(), mother->GetPy(), mother->GetPz()};
     tracksJson["xyz"] = {m_vertex->get_x(), m_vertex->get_y(), m_vertex->get_z()};
-    tracksJson["color"] = triggerColor;
+    tracksJson["trk_color"] = motherColor;
     tracksJson["nh"] = 60;
     tracksJson["l"] = decayLength;
     tracksJson["q"] = mother->Q();

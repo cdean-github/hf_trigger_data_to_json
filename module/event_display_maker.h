@@ -109,6 +109,7 @@ class event_display_maker : public SubsysReco
 
   int triggerColor = 16711680;
   int allColor = 16446450;
+  int motherColor = 10840509;
 };
 
 #endif // EVENT_DISPLAY_MAKER_H
