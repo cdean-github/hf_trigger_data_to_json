@@ -51,7 +51,7 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
 
   load_nodes(topNode);
 
-  if (m_kfp_container->size() != m_number_of_daughters + 1) //No simple HF candidates
+  if (m_kfp_container->size() != m_number_of_daughters + m_intermerdiate_names.size() +  1) //No simple HF candidates
   {
     return Fun4AllReturnCodes::EVENT_OK;
   }
@@ -63,6 +63,7 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
     if (counter >= m_max_displays) break; //Made the max number of displays
 
     kfp_daughters.clear();
+    intermediates.clear();
     trigger_tracks.clear();
     all_tracks.clear();
   
@@ -73,15 +74,19 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
       KFParticle *myParticle = kfp_iter->second;
       std::string thisParticle = getParticleName(abs(myParticle->GetPDG())); //Only care about trackable particles
 
-      if (std::find(std::begin(trackableParticles), std::end(trackableParticles), thisParticle) == std::end(trackableParticles))
+      if (thisParticle == m_mother_name)
       {
         mother = myParticle;
-        m_mother_name = thisParticle;
 
         if (!isInRange(m_min_mass, mother->GetMass(), m_max_mass))
         {
           return Fun4AllReturnCodes::EVENT_OK;
         }
+      }
+
+      if (std::find(std::begin(m_intermerdiate_names), std::end(m_intermerdiate_names), thisParticle) != std::end(m_intermerdiate_names))
+      {
+        intermediates.push_back(myParticle);
       }
 
       if (std::find(std::begin(trackableParticles), std::end(trackableParticles), thisParticle) != std::end(trackableParticles))
@@ -120,15 +125,12 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
     data[eventName]["pv"] = {m_vertex->get_x(), m_vertex->get_y(), m_vertex->get_z()};
     data[eventName]["runstats"] = {"sPHENIX Internal", date_run_stamp, bco_stamp, "200 GeV p+p"};
 
-    data[metadataName][hitsName][triggerTrackName]["type"] = "3D";
-    data[metadataName][hitsName][triggerTrackName]["options"]["size"] = 2;
-    data[metadataName][hitsName][triggerTrackName]["options"]["color"] = triggerColor;
-    //data[metadataName][trackName][triggerTrackName]["options"]["color"] = triggerColor;
-    data[metadataName][hitsName][allTrackName]["type"] = "3D";
-    data[metadataName][hitsName][allTrackName]["options"]["size"] = 2;
-    data[metadataName][hitsName][allTrackName]["options"]["transparent"] = 1;
-    data[metadataName][hitsName][allTrackName]["options"]["color"] = allColor;
-    //data[metadataName][trackName][allTrackName]["options"]["color"] = allColor;
+    for (auto& hitsMetaSetup : hitsNameVector)
+    {      
+      data[metadataName][hitsName][hitsMetaSetup]["type"] = "3D";
+      data[metadataName][hitsName][hitsMetaSetup]["options"]["size"] = 1;
+      data[metadataName][hitsName][hitsMetaSetup]["options"]["color"] = pidToColourMap[hitsMetaSetup];
+    }
 
     data[trackName]["B"] = 0.000014;
 
@@ -258,6 +260,8 @@ void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vecto
 
     float length = 0;
 
+    std::string hitType = jsonEntryName == allTrackName ? allTrackName : pidToHitMap[particles[trackCounter]->GetPDG()]; //Figure out if this is background or a triggered track
+
     for (auto state_iter = track->begin_states();
          state_iter != track->end_states();
          ++state_iter)
@@ -277,7 +281,7 @@ void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vecto
       clustersJson["z"] = id == TrkrDefs::tpcId ? tstate->get_z() : (float) global.z();
       clustersJson["e"] = 0;
 
-      jsonData[hitsName][jsonEntryName] += clustersJson;
+      jsonData[hitsName][hitType] += clustersJson;
 
       length = std::max(tstate->get_pathlength(), length);
 
@@ -299,7 +303,7 @@ void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vecto
 
     tracksJson["pxyz"] = trackMomentum;
     tracksJson["xyz"] = trackPosition;
-    tracksJson["trk_color"] = jsonEntryName == triggerTrackName ? triggerColor : allColor;
+    tracksJson["trk_color"] = jsonEntryName == triggerTrackName ? pidMap[particles[trackCounter]->GetPDG()] : allColour;
     tracksJson["nh"] = 60;
     tracksJson["l"] = length;
     tracksJson["q"] = jsonEntryName == triggerTrackName ? particles[trackCounter]->Q() : track->get_charge();
@@ -313,16 +317,26 @@ void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vecto
   //Now add mother
   if (jsonEntryName == triggerTrackName)
   {
-    float decayLength = std::sqrt(std::pow(mother->GetX() - m_vertex->get_x(), 2) + std::pow(mother->GetY() - m_vertex->get_y(), 2) + std::pow(mother->GetZ() - m_vertex->get_z(), 2));
-
     tracksJson["pxyz"] = {mother->GetPx(), mother->GetPy(), mother->GetPz()};
-    tracksJson["xyz"] = {m_vertex->get_x(), m_vertex->get_y(), m_vertex->get_z()};
-    tracksJson["trk_color"] = motherColor;
+    tracksJson["xyz"] = {mother->GetX(), mother->GetY(), mother->GetZ()};
+    tracksJson["trk_color"] = motherColour;
     tracksJson["nh"] = 60;
-    tracksJson["l"] = decayLength;
+    tracksJson["l"] = mother->GetDecayLength();
     tracksJson["q"] = mother->Q();
 
-    jsonData[trackName][jsonEntryName] += tracksJson;    
+    jsonData[trackName][jsonEntryName] += tracksJson;
+
+    for (auto& intermediate : intermediates)
+    {
+      tracksJson["pxyz"] = {intermediate->GetPx(), intermediate->GetPy(), intermediate->GetPz()};
+      tracksJson["xyz"] = {intermediate->GetX(), intermediate->GetY(), intermediate->GetZ()};
+      tracksJson["trk_color"] = intermediateColour;
+      tracksJson["nh"] = 60;
+      tracksJson["l"] = intermediate->GetDecayLength();
+      tracksJson["q"] = intermediate->Q();
+
+      jsonData[trackName][jsonEntryName] += tracksJson;
+    } 
      
   }
 }

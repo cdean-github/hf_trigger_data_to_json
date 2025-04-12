@@ -58,12 +58,17 @@ class event_display_maker : public SubsysReco
 
   void setMaxEvtDisplays(int max = 10) { m_max_displays = max; }
 
+  void setMotherName(std::string name = "K_S0") { m_mother_name = name; }
+
+  void setIntermediateNames(std::vector<std::string> name = {"Lambda0"}) { m_intermerdiate_names = name; }
+
  private:
   int counter = 0;
   int m_runNumber = 0;
   std::string m_evt_display_path = "./";
   std::string m_run_date = "2024-04-14";
   std::string m_mother_name = "K_S0";
+  std::vector<std::string> m_intermerdiate_names;
   float m_min_mass = 0.4;
   float m_max_mass = 0.6;
   int m_max_displays = 100;
@@ -92,6 +97,7 @@ class event_display_maker : public SubsysReco
   TrkrClusterContainer *dst_clustermap {nullptr};
 
   KFParticle *mother {nullptr};
+  std::vector<KFParticle*> intermediates;
   std::vector<KFParticle*> kfp_daughters;
   std::vector<SvtxTrack*> trigger_tracks;
   std::vector<SvtxTrack*> all_tracks;
@@ -102,14 +108,59 @@ class event_display_maker : public SubsysReco
 
   std::string eventName = "EVENT";
   std::string metadataName = "META";
-  std::string triggerTrackName = "TRIGGER";//"INNERTRACKER";
-  std::string allTrackName = "ALL";//"TRACKHITS";
+  std::string triggerTrackName = "TRIGGER";
+  std::string allTrackName = "ALL";
   std::string trackName = "TRACKS";
   std::string hitsName = "HITS";
+  std::string electronTriggerHitsName = "eHITS";
+  std::string muonTriggerHitsName = "muHITS";
+  std::string pionTriggerHitsName = "piHITS";
+  std::string kaonTriggerHitsName = "kHITS";
+  std::string protonTriggerHitsName = "pHITS";
+  std::vector<std::string> hitsNameVector = {electronTriggerHitsName, muonTriggerHitsName, pionTriggerHitsName, kaonTriggerHitsName, protonTriggerHitsName, allTrackName, triggerTrackName};
 
-  int triggerColor = 16711680;
-  int allColor = 16446450;
-  int motherColor = 10840509;
+  int electronColour = 16252672; //Yellow
+  int muonColour = 16743424; //Orange
+  int pionColour = 1834752; //Green
+  int kaonColour = 16711680; //Red
+  int protonColour = 12031; //Blue
+  int triggerColour = 16711680; //Red
+  int allColour = 16446450; //White
+  int motherColour = 4251856; //Turquoise
+  int intermediateColour = 16711935; //Purple
+
+  std::map<int, int> pidMap{
+  { 11, electronColour},
+  {-11, electronColour},
+  { 13, muonColour},
+  {-13, muonColour},
+  { 211, pionColour},
+  {-211, pionColour},
+  { 321, kaonColour},
+  {-321, kaonColour},
+  { 2212, protonColour},
+  {-2212, protonColour}};
+
+  std::map<int, std::string> pidToHitMap{
+  { 11, electronTriggerHitsName},
+  {-11, electronTriggerHitsName},
+  { 13, muonTriggerHitsName},
+  {-13, muonTriggerHitsName},
+  { 211, pionTriggerHitsName},
+  {-211, pionTriggerHitsName},
+  { 321, kaonTriggerHitsName},
+  {-321, kaonTriggerHitsName},
+  { 2212, protonTriggerHitsName},
+  {-2212, protonTriggerHitsName}};
+
+  std::map< std::string, int> pidToColourMap{
+  {electronTriggerHitsName, electronColour},
+  {muonTriggerHitsName, muonColour},
+  {pionTriggerHitsName, pionColour},
+  {kaonTriggerHitsName, kaonColour},
+  {protonTriggerHitsName, protonColour},
+  {allTrackName, allColour},
+  {triggerTrackName, triggerColour}};
 };
 
 #endif // EVENT_DISPLAY_MAKER_H
