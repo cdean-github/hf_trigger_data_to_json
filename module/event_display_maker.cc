@@ -50,12 +50,12 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
   if (counter >= m_max_displays) return Fun4AllReturnCodes::EVENT_OK; //Made the max number of displays
 
   load_nodes(topNode);
-
+/*
   if (m_kfp_container->size() != m_number_of_daughters + m_intermerdiate_names.size() +  1) //No simple HF candidates
   {
     return Fun4AllReturnCodes::EVENT_OK;
   }
-
+*/
   std::string trackableParticles[] = {"e-", "mu-", "pi+", "K+", "proton"};
 
   for (auto &vtx_iter : *m_vertexMap)
@@ -100,7 +100,7 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
       }
     }
 
-    if (kfp_daughters.size() != m_number_of_daughters) continue; //Check that we didnt have more than 1 candidate in this BC
+    if (kfp_daughters.size() < m_number_of_daughters) continue; //This could be risky
     //Get all tracks associated to this vertex
     for (SvtxVertex::TrackIter all_track_iter =  m_vertex->begin_tracks(); all_track_iter != m_vertex->end_tracks(); ++all_track_iter)
     {
@@ -262,6 +262,25 @@ void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vecto
 
     std::string hitType = jsonEntryName == allTrackName ? allTrackName : pidToHitMap[particles[trackCounter]->GetPDG()]; //Figure out if this is background or a triggered track
 
+    TrackSeed *silseed = track->get_silicon_seed();
+    if (silseed)
+    {
+      for (auto cluster_iter = silseed->begin_cluster_keys(); cluster_iter != silseed->end_cluster_keys(); ++cluster_iter)
+      {
+        uint64_t clusterKey = *cluster_iter;
+    
+        TrkrCluster *cluster = dst_clustermap->findCluster(clusterKey);
+        auto global = geometry->getGlobalPosition(clusterKey, cluster);
+
+        clustersJson["x"] = (float) global.x();
+        clustersJson["y"] = (float) global.y();
+        clustersJson["z"] = (float) global.z();
+        clustersJson["e"] = 0;
+
+        jsonData[hitsName][hitType] += clustersJson;
+      }
+    }
+
     for (auto state_iter = track->begin_states();
          state_iter != track->end_states();
          ++state_iter)
@@ -275,6 +294,8 @@ void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vecto
       auto global = geometry->getGlobalPosition(clusterKey, cluster);
 
       uint8_t id = TrkrDefs::getTrkrId(clusterKey);
+
+      if (id == TrkrDefs::mvtxId || id == TrkrDefs::inttId) continue; //Due to track state issue, use seeds to populate silicon clusters
 
       clustersJson["x"] = id == TrkrDefs::tpcId ? tstate->get_x() : (float) global.x();
       clustersJson["y"] = id == TrkrDefs::tpcId ? tstate->get_y() : (float) global.y();

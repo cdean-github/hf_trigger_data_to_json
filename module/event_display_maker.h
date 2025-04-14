@@ -122,12 +122,12 @@ class event_display_maker : public SubsysReco
   int electronColour = 16252672; //Yellow
   int muonColour = 16743424; //Orange
   int pionColour = 1834752; //Green
-  int kaonColour = 16711680; //Red
+  int kaonColour = 4251856; //Turquoise
   int protonColour = 12031; //Blue
   int triggerColour = 16711680; //Red
   int allColour = 16446450; //White
-  int motherColour = 4251856; //Turquoise
-  int intermediateColour = 16711935; //Purple
+  int motherColour = 16711680; //Red
+  int intermediateColour = 16070058; //Pink
 
   std::map<int, int> pidMap{
   { 11, electronColour},
