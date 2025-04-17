@@ -132,6 +132,8 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
       data[metadataName][hitsName][hitsMetaSetup]["options"]["color"] = pidToColourMap[hitsMetaSetup];
     }
 
+    data[metadataName][trackName][triggerTrackName]["width"] = 0.3;
+
     data[trackName]["B"] = 0.000014;
 
     getJSONdata(trigger_tracks, kfp_daughters, data, triggerTrackName);
