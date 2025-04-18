@@ -114,6 +114,10 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
     json data;
 
     uint64_t m_bco = gl1packet->lValue(0, "BCO") + trigger_tracks[0]->get_crossing();
+
+    //Check if we have a list of BCOs we want a plot for, and this is one of them
+    if (m_bco_list.size() != 0 && std::find(std::begin(m_bco_list), std::end(m_bco_list), m_bco) == std::end(m_bco_list)) continue;
+
     std::string date_run_stamp = m_run_date + ", Run " + std::to_string(m_runNumber);
     std::string bco_stamp = "BCO: " + std::to_string(m_bco);
 
@@ -123,7 +127,15 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
     data[eventName]["s_nn"] = 0;
     data[eventName]["B"] = 1.38;
     data[eventName]["pv"] = {m_vertex->get_x(), m_vertex->get_y(), m_vertex->get_z()};
-    data[eventName]["runstats"] = {"sPHENIX Internal", date_run_stamp, bco_stamp, "200 GeV p+p"};
+
+    if (m_approved)
+    {
+      data[eventName]["runstats"] = {"sPHENIX Tracking", date_run_stamp, m_decay_tag};
+    }
+    else
+    {
+      data[eventName]["runstats"] = {"sPHENIX Internal", date_run_stamp, bco_stamp, m_decay_tag};
+    }
 
     for (auto& hitsMetaSetup : hitsNameVector)
     {      

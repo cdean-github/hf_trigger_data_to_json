@@ -62,16 +62,25 @@ class event_display_maker : public SubsysReco
 
   void setIntermediateNames(std::vector<std::string> name = {"Lambda0"}) { m_intermerdiate_names = name; }
 
+  void setDecayTag(std::string tag) { m_decay_tag = tag; }
+
+  void useTheseBCOs(std::vector<uint64_t> bcoList) { m_bco_list = bcoList; }
+
+  void plotsApproved(bool approved = true) { m_approved = approved; }
+
  private:
   int counter = 0;
   int m_runNumber = 0;
   std::string m_evt_display_path = "./";
   std::string m_run_date = "2024-04-14";
   std::string m_mother_name = "K_S0";
+  std::string m_decay_tag = "200 GeV p+p";
+  std::vector<uint64_t> m_bco_list;
   std::vector<std::string> m_intermerdiate_names;
   float m_min_mass = 0.4;
   float m_max_mass = 0.6;
   int m_max_displays = 100;
+  bool m_approved = false;
 
   int load_nodes(PHCompositeNode *topNode);
   std::string getParticleName(int ID);
@@ -119,15 +128,24 @@ class event_display_maker : public SubsysReco
   std::string protonTriggerHitsName = "pHITS";
   std::vector<std::string> hitsNameVector = {electronTriggerHitsName, muonTriggerHitsName, pionTriggerHitsName, kaonTriggerHitsName, protonTriggerHitsName, allTrackName, triggerTrackName};
 
-  int electronColour = 16252672; //Yellow
-  int muonColour = 16743424; //Orange
-  int pionColour = 1834752; //Green
-  int kaonColour = 4251856; //Turquoise
-  int protonColour = 12031; //Blue
-  int triggerColour = 16711680; //Red
-  int allColour = 16446450; //White
-  int motherColour = 16711680; //Red
-  int intermediateColour = 16070058; //Pink
+  int yellow = 16252672;
+  int orange = 16743424;
+  int green = 1834752;
+  int turquoise = 4251856;
+  int blue = 12031;
+  int red = 16711680;
+  int pink = 16070058;
+  int white = 16446450;
+
+  int electronColour = yellow; 
+  int muonColour = pink;
+  int pionColour = green;
+  int kaonColour = turquoise;
+  int protonColour = orange;
+  int motherColour = red; 
+  int intermediateColour = blue;
+  int triggerColour = red;
+  int allColour = white;
 
   std::map<int, int> pidMap{
   { 11, electronColour},
