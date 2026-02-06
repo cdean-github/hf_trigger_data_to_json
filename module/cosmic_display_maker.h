@@ -103,7 +103,7 @@ class cosmic_display_maker : public SubsysReco
   int protonColour = orange;
   int motherColour = red; 
   int intermediateColour = blue;
-  int triggerColour = red;
+  int triggerColour = white;
   int allColour = white;
 
   std::map<std::string, int> pidToColourMap{

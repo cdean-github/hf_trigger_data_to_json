@@ -72,8 +72,8 @@ int hf_trigger_data_to_json::process_event(PHCompositeNode *topNode)
 
         if (m_track->get_vertex_id() != m_vertex->get_id()) continue; //Trck isnt from vertex (need continue to account for mother)
 
-        //identify(*myParticle);
-        //m_track->identify();
+        identify(*myParticle);
+        m_track->identify();
 
         kfp_daughters.push_back(myParticle);
         trigger_tracks.push_back(m_track);

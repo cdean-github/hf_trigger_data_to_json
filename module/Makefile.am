@@ -13,6 +13,7 @@ AM_LDFLAGS = \
 pkginclude_HEADERS = \
   hf_trigger_data_to_json.h \
   event_display_maker.h \
+  displayEvents.h \
   cosmic_display_maker.h
 
 lib_LTLIBRARIES = \
@@ -21,12 +22,14 @@ lib_LTLIBRARIES = \
 libhf_trigger_data_to_json_la_SOURCES = \
   hf_trigger_data_to_json.cc \
   event_display_maker.cc \
+  displayEvents.cc \
   cosmic_display_maker.cc
 
 libhf_trigger_data_to_json_la_LIBADD = \
   -lKFParticle \
   -lSubsysReco \
   -lphool \
+  -lcalo_io \
   -lcalotrigger \
   -lkfparticle_sphenix_io \
   -ltrackbase_historic

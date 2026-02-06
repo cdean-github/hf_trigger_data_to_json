@@ -97,8 +97,6 @@ int cosmic_display_maker::process_event(PHCompositeNode *topNode)
 
   getJSONdata(all_tracks, data);
 
-  if (!hasAll) return Fun4AllReturnCodes::EVENT_OK; 
-
   std::string m_output_file = m_evt_display_path + "/EvtDisplay_cosmic_" + std::to_string(m_runNumber) + "_" + std::to_string(m_bco) + ".json";
 
   json_output.open(m_output_file);

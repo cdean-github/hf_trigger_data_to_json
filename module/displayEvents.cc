@@ -1,4 +1,4 @@
-#include "event_display_maker.h"
+#include "displayEvents.h"
 
 #include <fun4all/Fun4AllReturnCodes.h>
 
@@ -17,22 +17,19 @@
 
 using json = nlohmann::json;
 
-float vertex[3];
-
 //____________________________________________________________________________..
-event_display_maker::event_display_maker(const std::string &name)
+displayEvents::displayEvents(const std::string &name)
  : SubsysReco(name)
- , m_kfparticleContainerName("reconstructedParticles")
 {
 }
 
 //____________________________________________________________________________..
-event_display_maker::~event_display_maker()
+displayEvents::~displayEvents()
 {
 }
 
 //____________________________________________________________________________..
-int event_display_maker::Init(PHCompositeNode *topNode)
+int displayEvents::Init(PHCompositeNode *topNode)
 {
   load_nodes(topNode);
 
@@ -47,62 +44,20 @@ int event_display_maker::Init(PHCompositeNode *topNode)
 }
 
 //____________________________________________________________________________..
-int event_display_maker::process_event(PHCompositeNode *topNode)
+int displayEvents::process_event(PHCompositeNode *topNode)
 {
   if (counter >= m_max_displays) return Fun4AllReturnCodes::EVENT_OK; //Made the max number of displays
 
   load_nodes(topNode);
-  std::string trackableParticles[] = {"e-", "mu-", "pi+", "K+", "proton"};
 
   for (auto &vtx_iter : *m_vertexMap)
   {
     if (counter >= m_max_displays) break; //Made the max number of displays
 
-    kfp_daughters.clear();
-    intermediates.clear();
-    trigger_tracks.clear();
     all_tracks.clear();
   
     m_vertex = vtx_iter.second;
 
-    for (KFParticle_Container::Iter kfp_iter = m_kfp_container->begin(); kfp_iter != m_kfp_container->end(); ++kfp_iter)
-    {
-      KFParticle *myParticle = kfp_iter->second;
-      std::string thisParticle = getParticleName(abs(myParticle->GetPDG())); //Only care about trackable particles
-
-      if (thisParticle == m_mother_name)
-      {
-        mother = myParticle;
-        vertex[0] = mother->GetX();
-        vertex[1] = mother->GetY();
-        vertex[2] = mother->GetZ();
-
-        if (!isInRange(m_min_mass, mother->GetMass(), m_max_mass))
-        {
-          return Fun4AllReturnCodes::EVENT_OK;
-        }
-      }
-
-      if (std::find(std::begin(m_intermerdiate_names), std::end(m_intermerdiate_names), thisParticle) != std::end(m_intermerdiate_names))
-      {
-        intermediates.push_back(myParticle);
-      }
-
-      if (std::find(std::begin(trackableParticles), std::end(trackableParticles), thisParticle) != std::end(trackableParticles))
-      {
-        m_track = getTrack(myParticle->Id(), m_trackMap);
-
-        //If we want calo information then we can only use bunch crossing 0 candidates
-        //if (loadCalos && (hasEMCal || hasIHCal || hasOHCal) && m_track->get_crossing() != 0) continue;
-
-        if (m_track->get_crossing() != m_vertex->get_beam_crossing()) continue; //Track isnt from same crossing (need continue to account for mother)
-
-        kfp_daughters.push_back(myParticle);
-        trigger_tracks.push_back(m_track);
-      }
-    }
-
-    if (kfp_daughters.size() < m_number_of_daughters) continue; //This could be risky
     //Get all tracks associated to this vertex
     for (SvtxVertex::TrackIter all_track_iter =  m_vertex->begin_tracks(); all_track_iter != m_vertex->end_tracks(); ++all_track_iter)
     {
@@ -110,12 +65,14 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
       all_tracks.push_back(m_track);
     }
 
+    if (loadCalos && (hasEMCal || hasIHCal || hasOHCal) && m_track->get_crossing() != 0) continue;
+
     triggeranalyzer->decodeTriggers(topNode);
 
     //Now fill the json file
     json data;
 
-    uint64_t m_bco = gl1packet->lValue(0, "BCO") + trigger_tracks[0]->get_crossing();
+    uint64_t m_bco = gl1packet->lValue(0, "BCO") + all_tracks[0]->get_crossing();
 
     //Check if we have a list of BCOs we want a plot for, and this is one of them
     if (m_bco_list.size() != 0 && std::find(std::begin(m_bco_list), std::end(m_bco_list), m_bco) == std::end(m_bco_list)) continue;
@@ -146,12 +103,11 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
       data[metadataName][hitsName][hitsMetaSetup]["options"]["color"] = pidToColourMap[hitsMetaSetup];
     }
 
-    data[metadataName][trackName][triggerTrackName]["width"] = 0.3;
+    data[metadataName][trackName][allTrackName]["width"] = 10;
 
     data[trackName]["B"] = 0.000014;
 
-    getJSONdata(trigger_tracks, kfp_daughters, data, triggerTrackName);
-    getJSONdata(all_tracks, kfp_daughters, data, allTrackName);
+    getJSONdata(all_tracks, data);
 
     if (loadCalos)
     {
@@ -164,7 +120,7 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
       if (hasOHCal) getJSONcalo(data, ohcalName, towersOH, geoOHCal);
     }
 
-    std::string m_output_file = m_evt_display_path + "/EvtDisplay_" + m_mother_name + "_" + std::to_string(m_runNumber) + "_" + std::to_string(m_bco) + ".json";
+    std::string m_output_file = m_evt_display_path + "/EvtDisplay_" + std::to_string(m_runNumber) + "_" + std::to_string(m_bco) + ".json";
 
     json_output.open(m_output_file);
     json_output << data.dump(2);
@@ -177,12 +133,12 @@ int event_display_maker::process_event(PHCompositeNode *topNode)
 }
 
 //____________________________________________________________________________..
-int event_display_maker::End(PHCompositeNode *topNode)
+int displayEvents::End(PHCompositeNode *topNode)
 {
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
-int event_display_maker::load_nodes(PHCompositeNode *topNode)
+int displayEvents::load_nodes(PHCompositeNode *topNode)
 {
   m_vertexMap = findNode::getClass<SvtxVertexMap>(topNode, "SvtxVertexMap");
   if (!m_vertexMap)
@@ -195,15 +151,6 @@ int event_display_maker::load_nodes(PHCompositeNode *topNode)
   if (!m_trackMap)
   {
     std::cout << __PRETTY_FUNCTION__ << " Fatal Error : missing SvtxTrackMap" << std::endl;
-    return Fun4AllReturnCodes::ABORTRUN;
-  }
-
-  m_kfparticleContainerName_container = m_kfparticleContainerName + "_KFParticle_Container";
-
-  m_kfp_container = findNode::getClass<KFParticle_Container>(topNode, m_kfparticleContainerName_container);
-  if (!m_kfp_container)
-  {
-    std::cout << __PRETTY_FUNCTION__ << " Fatal Error : missing " << m_kfparticleContainerName_container << std::endl;
     return Fun4AllReturnCodes::ABORTRUN;
   }
 
@@ -261,12 +208,12 @@ int event_display_maker::load_nodes(PHCompositeNode *topNode)
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
-std::string event_display_maker::getParticleName(int ID)
+std::string displayEvents::getParticleName(int ID)
 {
   return TDatabasePDG::Instance()->GetParticle(ID)->GetName();
 }
 
-SvtxTrack *event_display_maker::getTrack(unsigned int track_id, SvtxTrackMap *trackmap)
+SvtxTrack *displayEvents::getTrack(unsigned int track_id, SvtxTrackMap *trackmap)
 {
   SvtxTrack *matched_track = nullptr;
 
@@ -281,7 +228,7 @@ SvtxTrack *event_display_maker::getTrack(unsigned int track_id, SvtxTrackMap *tr
   return matched_track;
 }
 
-void event_display_maker::getJSONcalo(json &jsonData, std::string calo, TowerInfoContainer *towerCont, RawTowerGeomContainer *geom)
+void displayEvents::getJSONcalo(json &jsonData, std::string calo, TowerInfoContainer *towerCont, RawTowerGeomContainer *geom)
 {
   json calos;
 
@@ -289,7 +236,8 @@ void event_display_maker::getJSONcalo(json &jsonData, std::string calo, TowerInf
   {
     TowerInfo* tower = towerCont->get_tower_at_channel(channel);
     float raw_energy = tower->get_energy();
-    if (raw_energy < m_e_low_cut)
+    float thresholdCut = caloThreshold[calo];
+    if (raw_energy < thresholdCut)
     {
       continue;
     } 
@@ -306,7 +254,7 @@ void event_display_maker::getJSONcalo(json &jsonData, std::string calo, TowerInf
   }
 }
 
-void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vector<KFParticle*> particles, json &jsonData, std::string jsonEntryName)
+void displayEvents::getJSONdata(std::vector<SvtxTrack*> tracks, json &jsonData)
 {
   json tracksJson, clustersJson;
 
@@ -314,24 +262,7 @@ void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vecto
 
   for (auto track : tracks)
   {
-    //Skip drawing of trigger tracks in all tracks
-    if (jsonEntryName == allTrackName)
-    {
-      bool continueOn = false;
-      for (unsigned int i = 0; i < particles.size(); ++i)
-      {
-        if (track->get_id() == (unsigned) particles[i]->Id())
-        {
-          continueOn = true;
-          break;
-        }
-      }
-      if (continueOn) continue;
-    }
-
     float length = 0;
-
-    std::string hitType = jsonEntryName == allTrackName ? allTrackName : pidToHitMap[particles[trackCounter]->GetPDG()]; //Figure out if this is background or a triggered track
 
     TrackSeed *silseed = track->get_silicon_seed();
     if (silseed)
@@ -348,7 +279,7 @@ void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vecto
         clustersJson["z"] = (float) global.z();
         clustersJson["e"] = 0;
 
-        jsonData[hitsName][hitType] += clustersJson;
+        if (m_dont_show_track_clus == false) jsonData[hitsName][allTrackName] += clustersJson;
       }
     }
 
@@ -373,7 +304,7 @@ void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vecto
       clustersJson["z"] = id == TrkrDefs::tpcId ? tstate->get_z() : (float) global.z();
       clustersJson["e"] = 0;
 
-      jsonData[hitsName][hitType] += clustersJson;
+      if (m_dont_show_track_clus == false) jsonData[hitsName][allTrackName] += clustersJson;
 
       length = std::max(tstate->get_pathlength(), length);
 
@@ -382,59 +313,25 @@ void event_display_maker::getJSONdata(std::vector<SvtxTrack*> tracks, std::vecto
     std::vector<float> trackPosition;
     std::vector<float> trackMomentum;
 
-    if (jsonEntryName == triggerTrackName)
-    {
-      trackPosition = {particles[trackCounter]->GetX(), particles[trackCounter]->GetY(), particles[trackCounter]->GetZ()};
-      trackMomentum = {particles[trackCounter]->GetPx(), particles[trackCounter]->GetPy(), particles[trackCounter]->GetPz()};
-    }
-    else
-    {
-      trackPosition = {track->get_x(), track->get_y(), track->get_z()};
-      trackMomentum = {track->get_px(), track->get_py(), track->get_pz()};
-    }
+    trackPosition = {track->get_x(), track->get_y(), track->get_z()};
+    trackMomentum = {track->get_px(), track->get_py(), track->get_pz()};
 
     tracksJson["pxyz"] = trackMomentum;
     tracksJson["xyz"] = trackPosition;
-    tracksJson["trk_color"] = jsonEntryName == triggerTrackName ? pidMap[particles[trackCounter]->GetPDG()] : allColour;
+    tracksJson["trk_color"] = allColour;
     tracksJson["nh"] = 60;
     tracksJson["l"] = length;
-    tracksJson["q"] = jsonEntryName == triggerTrackName ? particles[trackCounter]->Q() : track->get_charge();
+    tracksJson["q"] = track->get_charge();
 
-    jsonData[trackName][jsonEntryName] += tracksJson;    
+    jsonData[trackName][allTrackName] += tracksJson;    
 
     ++trackCounter;
 
   } //End of track loop
-
-  //Now add mother
-  if (jsonEntryName == triggerTrackName)
-  {
-    tracksJson["pxyz"] = {mother->GetPx(), mother->GetPy(), mother->GetPz()};
-    tracksJson["xyz"] = {mother->GetX(), mother->GetY(), mother->GetZ()};
-    tracksJson["trk_color"] = motherColour;
-    tracksJson["nh"] = 60;
-    tracksJson["l"] = mother->GetDecayLength();
-    tracksJson["q"] = mother->Q();
-
-    jsonData[trackName][jsonEntryName] += tracksJson;
-
-    for (auto& intermediate : intermediates)
-    {
-      tracksJson["pxyz"] = {intermediate->GetPx(), intermediate->GetPy(), intermediate->GetPz()};
-      tracksJson["xyz"] = {intermediate->GetX(), intermediate->GetY(), intermediate->GetZ()};
-      tracksJson["trk_color"] = intermediateColour;
-      tracksJson["nh"] = 60;
-      tracksJson["l"] = intermediate->GetDecayLength();
-      tracksJson["q"] = intermediate->Q();
-
-      jsonData[trackName][jsonEntryName] += tracksJson;
-    } 
-     
-  }
 }
 
 //https://stackoverflow.com/questions/997946/how-to-get-current-time-and-date-in-c
-std::string event_display_maker::getDate()
+std::string displayEvents::getDate()
 {
     std::time_t t = std::time(0);   // get time now
     std::tm* now = std::localtime(&t);
@@ -446,12 +343,12 @@ std::string event_display_maker::getDate()
     return date.str();
 }
 
-bool event_display_maker::isInRange(float min, float value, float max)
+bool displayEvents::isInRange(float min, float value, float max)
 {
   return min <= value && value <= max;
 }
 
-json event_display_maker::caloMetadata(std::string type)
+json displayEvents::caloMetadata(std::string type)
 {
   json metaData, options, minmax;
 
